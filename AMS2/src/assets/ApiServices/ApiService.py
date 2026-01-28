@@ -1,0 +1,21 @@
+import httpx
+
+
+class ApiService:
+    """Base API Service für HTTP Requests"""
+
+    def __init__(self, base_url: str = "http://localhost:8000/api"):
+        self.base_url = base_url
+        self.client = httpx.Client(timeout=30.0)
+
+    async def get(self, endpoint: str, params: dict = None):
+        """GET Request"""
+        response = self.client.get(f"{self.base_url}/{endpoint}", params=params)
+        response.raise_for_status()
+        return response.json()
+
+    async def post(self, endpoint: str, data: dict):
+        """POST Request"""
+        response = self.client.post(f"{self.base_url}/{endpoint}", json=data)
+        response.raise_for_status()
+        return response.json()
