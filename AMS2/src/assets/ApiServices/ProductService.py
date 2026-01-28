@@ -7,8 +7,8 @@ from AMS2.src.assets.ShopLogic.Variant import Variant
 class ProductService:
     """Product API Service"""
 
-    def __init__(self, ):
-        self.api = ApiService()
+    def __init__(self, api):
+        self.api = api
 
     async def get_all_products(self) -> list[CatalogProduct]:
         """

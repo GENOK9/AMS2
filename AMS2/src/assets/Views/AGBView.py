@@ -1,2 +1,3 @@
 class AGBView:
-    pass
+    def build(self):
+        return ft.

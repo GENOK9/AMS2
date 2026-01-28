@@ -1,4 +1,4 @@
-from AMS.src.assets.ApiServices.ApiService import ApiService
+from AMS2.src.assets.ApiServices.ApiService import ApiService
 
 
 class OrderService:

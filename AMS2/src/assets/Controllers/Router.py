@@ -1,74 +1,106 @@
-from urllib.parse import urlparse, parse_qs
 import flet as ft
-from AMS2.src.assets.Controllers.ProcuctViewController import ProductViewController
 from AMS2.src.assets.Views import AGBView
+from AMS2.src.assets.Views.DataProtectionView import DataProtectionView
 from AMS2.src.assets.Views.ProductView import ProductView
 from AMS2.src.assets.Views.StartpageView import StartpageView
 from AMS2.src.assets.Views.CatalogView import CatalogView
 from AMS2.src.assets.Views.ImpressumView import ImpressumView
 from AMS2.src.assets.Views.AGBView import AGBView
 
-def route_change(e):
-    page = e.page
-    page.views.clear()
 
-    parsed = urlparse(page.route)
-    path = parsed.path
-    query = parse_qs(parsed.query)
+class Router:
+    def __init__(
+        self,
+        startpage_controller,
+        page: ft.Page,
+        cart,
+        catalog_controller,
+        product_controller,
+    ):
+        self.startpage_controller = startpage_controller
+        self.page = page
+        self.cart = cart
+        self.catalog_controller = catalog_controller
+        self.product_controller = product_controller
 
-    match path:
-        case ("/") :
-            page.views.append(
-                ft.View(
-                    route="/startpage",
-                    controls=[StartpageView(page).build()],
+    async def route_change(self, e: ft.RouteChangeEvent):
+        self.page.views.clear()
+
+        match True:
+
+            #  STARTPAGE
+            case _ if self.page.route == "/":
+                view = StartpageView(
+                    page=self.page,
+                    controller=self.startpage_controller)
+
+                self.page.views.append(
+                    ft.View(
+                        route="/",
+                        controls=[await view.build()],
+                    )
                 )
-            )
-        case "/catalog":
-            page.views.append(
-                ft.View(
-                    route="/catalog",
-                    controls=[CatalogView(page).build()],
+
+            #  CATALOG
+            case _ if self.page.route == "/catalog":
+                view = CatalogView(
+                    page=self.page,
+                    controller=self.catalog_controller,
                 )
-            )
 
-        case "/product":
-            product_id = query.get("productid", [None])[0]
-            if not product_id:
-                page.go("/catalog")
-                return
-
-            product = page.session.get("current_product")
-            cart = page.session.get("cart")
-
-            controller = ProductViewController(product, cart)
-
-            view = ProductView(
-                product=product,
-                on_variant_selected=controller.on_variant_selected,
-                on_add_to_cart=controller.add_to_cart
-            )
-
-            page.views.append(
-                ft.View(
-                    route="/product",
-                    controls=[view(page).build()],
+                self.page.views.append(
+                    ft.View(
+                        route="/",
+                        controls=[await view.build()],
+                    )
                 )
-            )
 
-        case "/impressum":
-            page.views.append(
-                ft.View(
-                    route="/impressum",
-                    controls=[ImpressumView(page).build()],
+            #  PRODUCT DETAIL
+            case _ if self.page.route.startswith("/product"):
+                try:
+                    product_id = int(self.page.route.split("product?productid=")[-1])
+                except  (ValueError, IndexError):
+                    self.page.go("/")
+                    return
+
+                view = ProductView(
+                    page=self.page,
+                    controller=self.product_controller,
+                    product_id=product_id,
                 )
-            )
 
-        case "/agb":
-            page.views.append(AGBView(page).build())
+                self.page.views.append(
+                    ft.View(
+                        route=self.page.route,
+                        controls=[await view.build()],
+                    )
+                )
 
-        case _:
-            page.go("/")
+            #  AGB
+            case _ if self.page.route == "/agb":
+                self.page.views.append(
+                    ft.View(
+                        route="/agb",
+                        controls=AGBView().build()
+                    )
+                )
 
+            #  IMPRESSUM
+            case _ if self.page.route == "/impressum":
+                self.page.views.append(
+                    ft.View(
+                        route="/impressum",
+                        controls=ImpressumView().build()
+                    )
+                )
 
-    page.update()
+            #  DATA PROTECTION
+            case _ if self.page.route == "/dataprotection":
+                self.page.views.append(
+                    ft.View(
+                        route="/dataprotection",
+                        controls=DataProtectionView().build()
+                    )
+                )
+
+        self.page.update()

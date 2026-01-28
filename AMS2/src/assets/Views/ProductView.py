@@ -1,12 +1,13 @@
 import flet as ft
 
 class ProductView:
-    def __init__(self, product, on_variant_selected, on_add_to_cart):
-        self.product = product
-        self.on_variant_selected = on_variant_selected
-        self.on_add_to_cart = on_add_to_cart
+    def __init__(self, page, controller, product_id):
+        self.page = page
+        self.controller = controller
+        self.product_id = product_id
 
-    def build(self):
+    async def build(self):
+        product = await self.controller.get_product_by_id(self.product_id)
         variant_options = []
 
         for idx, variant in enumerate(self.product.variants):

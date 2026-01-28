@@ -4,3 +4,7 @@ def get_featured_products():
 
 def on_featured_product_clicked(pid):
     return None
+
+
+class StartpageController:
+    pass

@@ -6,9 +6,9 @@ from AMS2.src.assets.Controllers.CatalogViewController import CatalogViewControl
 from AMS2.src.assets.ShopLogic.CatalogProduct import CatalogProduct
 
 class CatalogView:
-    def __init__(self, page: ft.Page, controller: CatalogViewController):
+    def __init__(self, page: ft.Page):
         self.page : ft.Page = page
-        self.controller = controller
+        self.controller = CatalogViewController()
         self.products: list[CatalogProduct] = []
         self.list_view = ft.ListView(expand=True, spacing=10)
 

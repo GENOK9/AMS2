@@ -1,2 +1,3 @@
 class DataProtectionView:
-    pass
+    def build(self):
+        pass
