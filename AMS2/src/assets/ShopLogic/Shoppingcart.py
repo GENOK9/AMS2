@@ -1,24 +1,71 @@
+from typing import Any, Coroutine
+
 import flet as ft
 
-from AMS2.src.assets.ApiServices.OrderService import OrderService
 from AMS2.src.assets.ShopLogic.Variant import Variant
-from AMS2.src.assets.ApiServices.ProductService import ProductService
 from AMS2.src.assets.ShopLogic.Customer import Customer
 
 
 class Shoppingcart:
-    def __init__(self, page: ft.Page):
+    def __init__(self, page: ft.Page, oserv, pserv):
         self.page = page
         self.items: dict[Variant, int] = {}
         self.shoppingcart_items = None
-        self.papi = ProductService()
-        self.order_service = OrderService()
+        self.papi = pserv
+        self.order_service = oserv
 
-    async def cart_panel(self):
+        self.cart_panel = ft.Container(
+            width=350,
+            bgcolor=ft.Colors.BLUE_400,
+            visible=False,
+            content=ft.Column(),
+        )
+        self.page.overlay.append(self.cart_panel)
+
+
+    def toggle_cart(self):
+        """Toggle cart visibility"""
+        if self.cart_panel:
+            self.cart_panel.visible = not self.cart_panel.visible
+            self.page.update()
+
+    def remove_item(self, variant: Variant):
+        self.items.pop(variant, None)
+        self.page.update()
+
+    def clear_cart(self):
+        self.items.clear()
+        self.page.update()
+
+    async def add_to_cart(self, variant: Variant, quantity: int = 1):
+        """Add item to cart"""
+        if quantity <= 0:
+            print(f"[cart] IGNORE quantity<=0: {quantity}")
+            return
+
+        if variant in self.items:
+            self.items[variant] += quantity
+        else:
+            self.items[variant] = quantity
+
+        await self.build_cart_content()
+
+        self.page.update()
+
+    async def calculate_total(self):
+        total = 0
+        for variant, quantity in self.items.items():
+            product = await self.papi.get_product_by_id(variant.product_id)
+            total += quantity * product.get_product_price_with_discount()
+        return total
+
+    async def build_cart_content(self) -> None:
+        """Build the cart panel content"""
         cart_listview = ft.ListView(
             spacing=10,
             padding=10,
-            expand=True)
+            expand=True
+        )
 
         if not self.items or len(self.items) == 0:
             cart_listview.controls.append(
@@ -33,133 +80,93 @@ class Shoppingcart:
             )
         else:
             for variant, quantity in self.items.items():
-                product = await self.papi.get_product_by_id(variant.product_id)
+                try:
+                    product = await self.papi.get_product_by_id(variant.product_id)
 
-                subtitle_parts = [
-                    f"Farbe: {variant.color}",
-                    f"Größe: {variant.size}",
-                ]
-                subtitle = " - ".join(subtitle_parts)
+                    subtitle_parts = [
+                        f"Farbe: {variant.color}",
+                        f"Größe: {variant.size}",
+                    ]
+                    subtitle = " - ".join(subtitle_parts)
 
-                cart_listview.controls.append(
-                    ft.ListTile(
-                        leading=ft.Icon(ft.Icons.CHECKROOM, size=40, color=ft.Colors.BLUE_400),
-                        title=ft.Text(product.name, weight=ft.FontWeight.BOLD),
-                        subtitle=ft.Column([
-                            ft.Text(subtitle, size=12, color=ft.Colors.GREY_600),
-                            ft.Text(
-                                f"€{product.get_product_price_with_discount():.2f}",
-                                size=14,
-                                weight=ft.FontWeight.BOLD,
-                                color=ft.Colors.GREEN_700,
-                            ),
-                        ], spacing=4),
-                        trailing=ft.Row([
-                            ft.Text(f"{quantity}x", size=16, weight=ft.FontWeight.BOLD),
-                            ft.IconButton(
-                                icon=ft.Icons.DELETE,
-                                icon_color=ft.Colors.RED_400,
-                                icon_size=20,
-                                on_click=lambda _, v=variant: self.remove_item(v),
-                            ),
-                        ], width=80, spacing=5),
+                    cart_listview.controls.append(
+                        ft.ListTile(
+                            leading=ft.Icon(ft.Icons.CHECKROOM, size=40, color=ft.Colors.BLUE_400),
+                            title=ft.Text(product.name, weight=ft.FontWeight.BOLD),
+                            subtitle=ft.Column([
+                                ft.Text(subtitle, size=12, color=ft.Colors.GREY_600),
+                                ft.Text(
+                                    f"€{product.get_product_price_with_discount():.2f}",
+                                    size=14,
+                                    weight=ft.FontWeight.BOLD,
+                                    color=ft.Colors.GREEN_700,
+                                ),
+                            ], spacing=4),
+                            trailing=ft.Row([
+                                ft.Text(f"{quantity}x", size=16, weight=ft.FontWeight.BOLD),
+                                ft.IconButton(
+                                    icon=ft.Icons.DELETE,
+                                    icon_color=ft.Colors.RED_400,
+                                    icon_size=20,
+                                    on_click=lambda _, v=variant: self.remove_item(v),
+                                ),
+                            ], width=80, spacing=5),
+                        )
                     )
-                )
+                except Exception as e:
+                    print(f"Error building cart item: {e}")
+            self.page.update()
 
-        # Hier ist das fehlende Container-Wrapper mit voller Höhe
-        return ft.Container(
-            content=ft.Column([
-                # Header
-                ft.Container(
-                    content=ft.Row([
-                        ft.Text("Warenkorb", size=20, weight=ft.FontWeight.BOLD),
-                        ft.IconButton(
-                            icon=ft.Icons.CLOSE,
-                            on_click=lambda _: self.toggle_cart(self.page),
-                            tooltip="Schließen"
+        total = await self.calculate_total()
+
+        self.cart_panel.content = ft.Column([
+            # Header
+            ft.Container(
+                content=ft.Row([
+                    ft.Text("Warenkorb", size=20, weight=ft.FontWeight.BOLD),
+                    ft.IconButton(
+                        icon=ft.Icons.CLOSE,
+                        on_click=lambda _: self.toggle_cart(),
+                        tooltip="Schließen"
+                    ),
+                ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                padding=ft.padding.all(15),
+                bgcolor=ft.Colors.ORANGE_500,
+            ),
+            # ListView mit Produkten
+            ft.Container(
+                content=cart_listview,
+                expand=True,
+            ),
+            # Footer mit Summe
+            ft.Container(
+                content=ft.Column([
+                    ft.Divider(height=1),
+                    ft.Row([
+                        ft.Text("Gesamt:", size=16, weight=ft.FontWeight.BOLD),
+                        ft.Text(
+                            f"€{total:.2f}",
+                            size=16,
+                            weight=ft.FontWeight.BOLD,
+                            color=ft.Colors.GREEN_700
                         ),
                     ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                    padding=ft.padding.all(15),
-                    bgcolor=ft.Colors.ORANGE_500,
-                ),
-                # ListView mit Produkten
-                ft.Container(
-                    content=cart_listview,
-                    expand=True,
-                ),
-                # Footer mit Summe (optional)
-                ft.Container(
-                    content=ft.Column([
-                        ft.Divider(height=1),
-                        ft.Row([
-                            ft.Text("Gesamt:", size=16, weight=ft.FontWeight.BOLD),
-                            ft.Text(
-                                f"€{await self.calculate_total():.2f}",
-                                size=16,
-                                weight=ft.FontWeight.BOLD,
-                                color=ft.Colors.GREEN_700
-                            ),
-                        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                        ft.ElevatedButton(
-                            "Zur Kasse",
-                            bgcolor=ft.Colors.ORANGE_500,
-                            color=ft.Colors.WHITE,
-                            width=float('inf'),
-                            on_click=lambda _: self.show_checkout_dialog()
-                        ),
-                    ], spacing=10),
-                    padding=ft.padding.all(15),
-                ),
-            ], spacing=0),
-            width=350,  # Feste Breite
-            height=float('inf'),  # Volle Höhe
-            bgcolor=ft.Colors.WHITE,
-            shadow=ft.BoxShadow(blur_radius=10, spread_radius=2, color=ft.Colors.BLACK12),
-            visible=False,  # Initial versteckt
-        )
-
-    def add_variant(self, variant: Variant, quantity: int = 1):
-        if variant.quantity < quantity:
-            raise ValueError("Nicht genug Lagerbestand")
-
-        self.items[variant] = self.items.get(variant, 0) + quantity
-
-    def remove_item(self, variant: Variant):
-        self.items.pop(variant, None)
-        self.page.update()
-
-    def clear_cart(self):
-        self.items.clear()
-        self.page.update()
-
-    def toggle_cart_button(self, page: ft.Page):
-        cart_button = ft.FloatingActionButton(
-            icon=ft.Icons.SHOPPING_CART,
-            bgcolor=ft.Colors.ORANGE_500,
-            on_click=lambda _: (self.toggle_cart(page)),
-            tooltip="Warenkorb öffnen",
-        )
-
-        return cart_button
-
-    def toggle_cart(self, page: ft.Page):
-        self.cart_panel.visible = not self.cart_panel.visible
-        page.update()
-        self.page.update()
-
-    def close_cart(self):
-        self.cart_panel.visible = False
-        self.page.update()
-
-    async def calculate_total(self):
-        total = 0
-        for variant, quantity in self.items.items():
-            product = await self.papi.get_product_by_id(variant.product_id)
-            total += quantity * product.price
-        return total
-
+                    ft.ElevatedButton(
+                        "Zur Kasse",
+                        bgcolor=ft.Colors.ORANGE_500,
+                        color=ft.Colors.WHITE,
+                        width=float('inf'),
+                        on_click=lambda _: self.show_checkout_dialog()
+                    ),
+                ], spacing=10),
+                padding=ft.padding.all(15),
+            ),
+        ], spacing=0)
 
     def show_checkout_dialog(self):
+        if self.cart_panel:
+            self.cart_panel.visible = False
+
         # Input-Felder für Kundendaten
         firstname_field = ft.TextField(label="Vorname", hint_text="Max")
         lastname_field = ft.TextField(label="Nachname", hint_text="Mustermann")
@@ -218,7 +225,7 @@ class Shoppingcart:
                 height=600,
             ),
             actions=[
-                ft.TextButton("Abbrechen", on_click=lambda _: self.close_dialog()),
+                ft.TextButton("Abbrechen", on_click=lambda _: self.toggle_cart()),
                 ft.ElevatedButton(
                     "Bestellung aufgeben",
                     bgcolor=ft.Colors.ORANGE_500,
@@ -229,14 +236,10 @@ class Shoppingcart:
             actions_alignment=ft.MainAxisAlignment.END,
         )
 
-        self.page.dialog = dialog
-        dialog.open = True
+        print("JETZT KOMMT DER DIALOG PASST AUF WUUHUUU")
+        self.page.open(dialog)
         self.page.update()
 
-    def close_dialog(self):
-        if self.page.dialog:
-            self.page.dialog.open = False
-            self.page.update()
 
     async def place_order(self, firstname_field, lastname_field, email_field, phone_field,
                           street_field, house_number_field, postal_code_field, city_field,
@@ -265,14 +268,14 @@ class Shoppingcart:
         customer = Customer(
             firstname_field.value,
             lastname_field.value,
+            country_field.value,
+            city_field.value,
+            street_field.value,
+            int(postal_code_field.value),
+            house_number_field.value,
+            "",
             email_field.value,
             phone_field.value,
-            street_field.value,
-            house_number_field.value,
-            postal_code_field.value,
-            city_field.value,
-            country_field.value,
-            delivery_option.value
         )
 
         # Order-Daten (variant_id: quantity)
@@ -285,14 +288,12 @@ class Shoppingcart:
             # Bestellung senden mit Customer-Objekt und Order-Daten
             await self.order_service.create_order(customer, order_data)
 
-            # Dialog schließen
-            self.close_dialog()
-
             # Warenkorb leeren
             self.items.clear()
 
             # Warenkorb schließen
-            self.cart_panel.visible = False
+            if self.cart_panel:
+                self.cart_panel.visible = False
             self.page.update()
 
             # Erfolgs-Snackbar
@@ -311,8 +312,3 @@ class Shoppingcart:
             )
             self.page.snack_bar.open = True
             self.page.update()
-
-
-def add_to_cart(self, cart: Shoppingcart):
-    variant = self.variants[self.selectedVariant]
-    cart.add_variant(variant)

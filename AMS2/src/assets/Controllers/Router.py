@@ -10,18 +10,23 @@ from AMS2.src.assets.Views.AGBView import AGBView
 
 class Router:
     def __init__(
-        self,
-        startpage_controller,
-        page: ft.Page,
-        cart,
-        catalog_controller,
-        product_controller,
+            self,
+            startpage_controller,
+            page: ft.Page,
+            cart,
+            catalog_controller,
+            product_controller,
     ):
         self.startpage_controller = startpage_controller
-        self.page = page
+        self.page : ft.Page = page
         self.cart = cart
         self.catalog_controller = catalog_controller
         self.product_controller = product_controller
+
+    def navigate_to_catalog_with_category(self, category: str):
+        """Navigiert zur Catalog-View mit ausgewählter Kategorie"""
+        self.catalog_controller.selected_category = category
+        self.page.go("/catalog")
 
     async def route_change(self, e: ft.RouteChangeEvent):
         self.page.views.clear()
@@ -38,6 +43,7 @@ class Router:
                     ft.View(
                         route="/",
                         controls=[await view.build()],
+                        appbar=self.page.appbar
                     )
                 )
 
@@ -50,8 +56,9 @@ class Router:
 
                 self.page.views.append(
                     ft.View(
-                        route="/",
+                        route="/catalog",
                         controls=[await view.build()],
+                        appbar=self.page.appbar
                     )
                 )
 
@@ -73,6 +80,7 @@ class Router:
                     ft.View(
                         route=self.page.route,
                         controls=[await view.build()],
+                        appbar=self.page.appbar
                     )
                 )
 
@@ -81,7 +89,7 @@ class Router:
                 self.page.views.append(
                     ft.View(
                         route="/agb",
-                        controls=AGBView().build()
+                        controls=[AGBView().build()]
                     )
                 )
 
@@ -90,7 +98,7 @@ class Router:
                 self.page.views.append(
                     ft.View(
                         route="/impressum",
-                        controls=ImpressumView().build()
+                        controls=[ImpressumView().build()]
                     )
                 )
 
@@ -99,7 +107,7 @@ class Router:
                 self.page.views.append(
                     ft.View(
                         route="/dataprotection",
-                        controls=DataProtectionView().build()
+                        controls=[DataProtectionView().build()]
                     )
                 )
 

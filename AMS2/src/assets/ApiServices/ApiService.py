@@ -4,7 +4,7 @@ import httpx
 class ApiService:
     """Base API Service für HTTP Requests"""
 
-    def __init__(self, base_url: str = "http://localhost:8000/api"):
+    def __init__(self, base_url: str = "http://localhost:8080/api"):
         self.base_url = base_url
         self.client = httpx.Client(timeout=30.0)
 

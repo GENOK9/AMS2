@@ -3,22 +3,25 @@ from AMS2.src.assets.ApiServices.ProductService import ProductService
 
 
 class CatalogViewController:
-    def __init__(self):
-        self.product_service = ProductService()
-        self.selected_category = None
+    def __init__(self, product_service):
+        self.product_service = product_service
+        self.selected_category: str = "Alles"
 
     async def load_products(self):
-        """loads products from api"""
         try:
-            return await self.product_service.get_all_products()
-
+            if self.selected_category and self.selected_category != "Alles":
+                products = await self.product_service.get_products_by_category(self.selected_category)
+                return products
+            else:
+                self.selected_category = None
+                products = await self.product_service.get_all_products()
+                return products
         except Exception as e:
             raise RuntimeError("Produkte konnten nicht geladen werden") from e
 
-    async def load_categories(self, category):
-        """ loads products from api by category"""
-        try:
-            return await self.product_service.get_products_by_category(category)
-
-        except Exception as e:
-            raise RuntimeError("Kategorie konnte nicht geladen werden") from e
+    def sort_products(self, products: list, mode: str):
+        if mode == "price_asc":
+            return sorted(products, key=lambda p: p.price)
+        if mode == "price_desc":
+            return sorted(products, key=lambda p: p.price, reverse=True)
+        return products
