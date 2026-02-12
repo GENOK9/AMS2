@@ -3,13 +3,13 @@ from dataclasses import dataclass
 @dataclass()
 class Customer:
     """Kundendatenmodell"""
-    firstname: str
-    lastname: str
+    firstName: str
+    lastName: str
     country: str
     city: str
     street: str
-    postal: int
-    housenumber: str
-    extra: str = ""
+    postalCode: int
+    houseNumber: str
+    gender: str = ""
     email: str = ""
-    phone: str = ""
+    phoneNumber: str = ""

@@ -1,3 +1,4 @@
+from dataclasses import asdict
 from typing import Any, Coroutine
 
 import flet as ft
@@ -19,6 +20,8 @@ class Shoppingcart:
             bgcolor=ft.Colors.BLUE_400,
             visible=False,
             content=ft.Column(),
+            right=0,
+            bottom=30,
         )
         self.page.overlay.append(self.cart_panel)
 
@@ -32,6 +35,7 @@ class Shoppingcart:
     def remove_item(self, variant: Variant):
         self.items.pop(variant, None)
         self.page.update()
+        self.build_cart_content()
 
     def clear_cart(self):
         self.items.clear()
@@ -182,12 +186,22 @@ class Shoppingcart:
         delivery_option = ft.RadioGroup(
             content=ft.Column([
                 ft.Radio(value="pickup", label="Abholung"),
-                ft.Radio(value="shipping", label="Versand"),
+                ft.Radio(value="delivery", label="Versand"),
             ]),
             value="pickup"
         )
 
+        gender = ft.RadioGroup(
+            content=ft.Column([
+                ft.Radio(value="MALE", label= "Männchen"),
+                ft.Radio(value="FEMALE", label= "Weibchen"),
+                ft.Radio(value="OTHER", label= "Divers")
+            ]),
+            value="OTHER"
+        )
+
         async def on_place_order(e):
+            print("ON PLACE ORDER")
             await self.place_order(
                 firstname_field,
                 lastname_field,
@@ -198,7 +212,8 @@ class Shoppingcart:
                 postal_code_field,
                 city_field,
                 country_field,
-                delivery_option
+                delivery_option,
+                gender
             )
 
         dialog = ft.AlertDialog(
@@ -217,6 +232,7 @@ class Shoppingcart:
                     postal_code_field,
                     city_field,
                     country_field,
+                    gender,
                     ft.Divider(),
                     ft.Text("Lieferung:", weight=ft.FontWeight.BOLD, size=16),
                     delivery_option,
@@ -225,7 +241,6 @@ class Shoppingcart:
                 height=600,
             ),
             actions=[
-                ft.TextButton("Abbrechen", on_click=lambda _: self.toggle_cart()),
                 ft.ElevatedButton(
                     "Bestellung aufgeben",
                     bgcolor=ft.Colors.ORANGE_500,
@@ -243,7 +258,7 @@ class Shoppingcart:
 
     async def place_order(self, firstname_field, lastname_field, email_field, phone_field,
                           street_field, house_number_field, postal_code_field, city_field,
-                          country_field, delivery_option):
+                          country_field, delivery_option, gender):
         # Validierung
         if not all([
             firstname_field.value,
@@ -254,13 +269,14 @@ class Shoppingcart:
             house_number_field.value,
             postal_code_field.value,
             city_field.value,
-            country_field.value
+            country_field.value,
+            gender.value
         ]):
-            self.page.snack_bar = ft.SnackBar(
+            snack_bar = ft.SnackBar(
                 content=ft.Text("Bitte alle Felder ausfüllen!"),
                 bgcolor=ft.Colors.RED_500
             )
-            self.page.snack_bar.open = True
+            self.page.open(snack_bar)
             self.page.update()
             return
 
@@ -273,20 +289,28 @@ class Shoppingcart:
             street_field.value,
             int(postal_code_field.value),
             house_number_field.value,
-            "",
+            gender.value,
             email_field.value,
             phone_field.value,
         )
 
-        # Order-Daten (variant_id: quantity)
-        order_data = {
-            variant.id: quantity
+        # API-Body
+        items_payload = [
+            {"variantId": variant.id, "quantity": quantity}
             for variant, quantity in self.items.items()
+        ]
+
+        order_payload = {
+            "customer": asdict(customer),
+            "shoppingCart": items_payload,
+            "delivery": delivery_option.value == "delivery",
         }
 
+        order_string = ()
+
         try:
-            # Bestellung senden mit Customer-Objekt und Order-Daten
-            await self.order_service.create_order(customer, order_data)
+            await self.order_service.create_order(order_payload)
+            print("Bestellung erfolgreich abgeschickt!")
 
             # Warenkorb leeren
             self.items.clear()
@@ -297,11 +321,11 @@ class Shoppingcart:
             self.page.update()
 
             # Erfolgs-Snackbar
-            self.page.snack_bar = ft.SnackBar(
+            snack_bar = ft.SnackBar(
                 content=ft.Text("Bestellung erfolgreich aufgegeben!"),
                 bgcolor=ft.Colors.GREEN_500
             )
-            self.page.snack_bar.open = True
+            self.page.open(snack_bar)
             self.page.update()
 
         except Exception as e:

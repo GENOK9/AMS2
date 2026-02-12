@@ -33,7 +33,7 @@ class StartpageView:
 
     def create_hero(self) -> ft.Container:
         return ft.Container(
-            image=ft.DecorationImage("AMS2/src/assets/icon.png", fit=ImageFit.COVER),
+            image=ft.DecorationImage("https://image2url.com/r2/default/images/1770881056118-4203c386-e0be-4c04-8b14-a391bf7277d9.blob", fit=ImageFit.COVER),
             padding=80,
             alignment=ft.alignment.center,
             content=ft.Column(

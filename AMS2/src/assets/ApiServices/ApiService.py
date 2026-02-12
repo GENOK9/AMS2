@@ -1,3 +1,5 @@
+from traceback import print_tb
+
 import httpx
 
 
@@ -7,6 +9,7 @@ class ApiService:
     def __init__(self, base_url: str = "http://localhost:8080/api"):
         self.base_url = base_url
         self.client = httpx.Client(timeout=30.0)
+        self.AsyncClient = httpx.AsyncClient(timeout=30.0)
 
     async def get(self, endpoint: str, params: dict = None):
         """GET Request"""
@@ -16,6 +19,5 @@ class ApiService:
 
     async def post(self, endpoint: str, data: dict):
         """POST Request"""
-        response = self.client.post(f"{self.base_url}/{endpoint}", json=data)
-        response.raise_for_status()
-        return response.json()
+        await self.AsyncClient.post(f"{self.base_url}/{endpoint}", json=data)
+        print("halloooo")

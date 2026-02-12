@@ -16,6 +16,7 @@ class CatalogView:
         self.list_view = ft.ListView(expand=True, spacing=10)
         self.selected_category: str = "Alles"
 
+
         self.sort_dropdown = ft.Dropdown(
             label="Sortieren",
             options=[

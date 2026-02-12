@@ -106,6 +106,8 @@ class ProductView:
                         icon=ft.Icons.SHOPPING_CART,
                         on_click=self._on_add_to_cart,
                     ),
+                    ft.Divider(),
+                    ft.Text(self.controller.get_description(), size=20, weight=ft.FontWeight.BOLD),
                 ],
             ),
         )

@@ -52,6 +52,9 @@ class ProductViewController:
             return self.selected_variant.get_primary_image() or self.product.variants[0].gallery[0]
         return self.product.variants[0].gallery[0]
 
+    def get_description(self) -> str:
+        return self.product.description if self.product else ""
+
     def next_image(self) -> str | None:
         """Go to next image in the gallery"""
         if self.selected_variant:

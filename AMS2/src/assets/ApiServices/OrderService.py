@@ -1,3 +1,5 @@
+import json
+
 from AMS2.src.assets.ApiServices.ApiService import ApiService
 
 
@@ -7,7 +9,8 @@ class OrderService:
     def __init__(self, api: ApiService):
         self.api = api
 
-    async def create_order(self, order_data: dict) -> dict:
+    async def create_order(self, order_data: dict):
+        print("order_data (json):", json.dumps(order_data, ensure_ascii=False, indent=2, default=str))
         """
         Erstellt Bestellung
         POST /orders
@@ -20,7 +23,6 @@ class OrderService:
             },
             "items": [
                 {
-                    "product_id": 1,
                     "variant_id": 2,
                     "quantity": 3
                 }
@@ -28,5 +30,5 @@ class OrderService:
             "delivery": true
         }
         """
-        response = await self.api.post("orders", order_data)
-        return response
+        await self.api.post("order/new", order_data)
+        print("Bestellung erfolgreich ABGESENDET!")
